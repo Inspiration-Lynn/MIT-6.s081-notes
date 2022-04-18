@@ -51,7 +51,7 @@ Strong isolation requires a **hard boundary between applications and the operati
 2. **microkernel（微内核）** - To reduce the risk of mistakes in the kernel, OS designers can minimize the amount of os code that runs in supervisor mode, and execute the bulk of the os in user mode.
    - The kernel interface consists of a few low-level functions for starting applications, sending messages, accessing device hardware, etc. This organization allows the kernel to be relatively simple, as most of the operating system resides in user-level servers.
 
-![image-20220412203032116](chapter 2 Operating system organization.assets/image-20220412203032116.png)
+![image-20220412203032116](2-OperatingSystemOrganization.assets/image-20220412203032116.png)
 
 > Figure 2.1 illustrates this microkernel design. In the figure, the file system runs as a user-level process. OS services running as processes are called servers. To allow applications to interact with the file server, the kernel provides an inter-process communication mechanism to send messages from one user-mode process to another. For example, if an application like the shell wants to read or write a file, it sends a message to the file server and waits for a response. 
 
@@ -63,7 +63,7 @@ Xv6 is implemented as a monolithic kernel, like most Unix operating systems. Thu
 
 The xv6 kernel source: kernel/
 
-![image-20220412210211239](chapter 2 Operating system organization.assets/image-20220412210211239.png)
+![image-20220412210211239](2-OperatingSystemOrganization.assets/image-20220412210211239.png)
 
 The inter-module interfaces are defined in defs.h (kernel/defs.h)
 
@@ -87,7 +87,7 @@ The inter-module interfaces are defined in defs.h (kernel/defs.h)
 
     - maximum address
 
-    ![image-20220412211625674](chapter 2 Operating system organization.assets/image-20220412211625674.png)
+    ![image-20220412211625674](2-OperatingSystemOrganization.assets/image-20220412211625674.png)
 
 - Per-process state - `struct proc` (kernel/proc.h)
 
@@ -171,7 +171,7 @@ The inter-module interfaces are defined in defs.h (kernel/defs.h)
 
 
 
-![img](chapter 2 Operating system organization.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MJdmgC_aByY8_wjKNKA%2F-MJgXiV2KBGQeuPgX4Bj%2Fimage.png)
+![img](2-OperatingSystemOrganization.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MJdmgC_aByY8_wjKNKA%2F-MJgXiV2KBGQeuPgX4Bj%2Fimage.png)
 
 3. 调用qemu运行Kernel
    - -kernel：这里传递的是内核文件（kernel目录下的kernel文件），这是将在QEMU中运行的程序文件。
@@ -179,7 +179,7 @@ The inter-module interfaces are defined in defs.h (kernel/defs.h)
    - -smp：这里传递的是虚拟机可以使用的CPU核数
    - -drive：传递的是虚拟机使用的磁盘驱动，这里传入的是fs.img文件
 
-![image-20220413112245380](chapter 2 Operating system organization.assets/image-20220413112245380.png)
+![image-20220413112245380](2-OperatingSystemOrganization.assets/image-20220413112245380.png)
 
 
 
@@ -197,7 +197,7 @@ QEMU仿真RISC-V处理器，背后的含义？
 
 为了完成这里的工作，QEMU的主循环需要维护寄存器的状态。所以QEMU会有以C语言声明的类似于X0，X1寄存器等等。
 
-![img](chapter 2 Operating system organization.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MJgoATd2oLIEq69pgjA%2F-MJivpmcbCh1TaxGomhZ%2Fimage.png)
+![img](2-OperatingSystemOrganization.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MJgoATd2oLIEq69pgjA%2F-MJivpmcbCh1TaxGomhZ%2Fimage.png)
 
 ## # **[XV6 启动过程-gdb内核调试](https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec03-os-organization-and-system-calls/3.9-xv6-qi-dong-guo-cheng)**
 
@@ -221,7 +221,7 @@ echo "set auto-load safe-path / " >> ~/.gdbinit
 make CPUS=1 qemu-gdb
 ```
 
-![image-20220413124041485](chapter 2 Operating system organization.assets/image-20220413124041485.png)
+![image-20220413124041485](2-OperatingSystemOrganization.assets/image-20220413124041485.png)
 
 3. 另开一个窗口，启动一个gdb client:
 
@@ -238,7 +238,7 @@ lynn@DESKTOP-M96JUD3:~/xv6-riscv$ gdb-multiarch
 
 - **调试内核**
 
-![image-20220413131648411](chapter 2 Operating system organization.assets/image-20220413131648411.png)
+![image-20220413131648411](2-OperatingSystemOrganization.assets/image-20220413131648411.png)
 
 ```bash
 (gdb)layout split
@@ -246,4 +246,4 @@ lynn@DESKTOP-M96JUD3:~/xv6-riscv$ gdb-multiarch
 
 从这个视图可以看出gdb要执行的下一条指令是什么，断点具体在什么位置:
 
-![image-20220413131815488](chapter 2 Operating system organization.assets/image-20220413131815488.png)
+![image-20220413131815488](2-OperatingSystemOrganization.assets/image-20220413131815488.png)

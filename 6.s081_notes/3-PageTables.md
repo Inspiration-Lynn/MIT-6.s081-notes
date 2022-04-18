@@ -33,7 +33,7 @@
 - 每个程序都运行在自己的地址空间，并且这些地址空间相互独立
   - 强隔离性
 
-![img](chapter 3 Page tables.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MKKjB2an4WcuUmOlE__%2F-MKO-tmkrzI0URCtzr3X%2Fimage.png)
+![img](3-PageTables.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MKKjB2an4WcuUmOlE__%2F-MKO-tmkrzI0URCtzr3X%2Fimage.png)
 
 
 
@@ -43,7 +43,7 @@
 
 使用虚拟内存寻址的系统：
 
-![image-20220417172153334](chapter 3 Page tables.assets/image-20220417172153334.png)
+![image-20220417172153334](3-PageTables.assets/image-20220417172153334.png)
 
 - 内存管理单元 (MMU) 利用内存中的**页表**来进行地址翻译
   - 寄存器**satp**存放页表物理地址
@@ -59,7 +59,7 @@
 
   - 页大小为4KB
 
-![image-20220417173344629](chapter 3 Page tables.assets/image-20220417173344629.png)
+![image-20220417173344629](3-PageTables.assets/image-20220417173344629.png)
 
 - VA有效位39bit，分为两部分：Index (查找Page) & Offset (Page中的哪个字节，位数对应页大小)
 
@@ -77,7 +77,7 @@
 
     3；3*512（比起单级页表2^27少占用很多内存空间）
 
-![image-20220417175252507](chapter 3 Page tables.assets/image-20220417175252507.png)
+![image-20220417175252507](3-PageTables.assets/image-20220417175252507.png)
 
 1. VA中的27bit Index被分成L2 L1 L0各9bit，用来索引Page Directory
 2. 一个Page Directory大小为4096bit，一个页那么大
@@ -86,17 +86,17 @@
 
 - **PTE中的Flag**
 
-![image-20220418091923815](chapter 3 Page tables.assets/image-20220418091923815.png)
+![image-20220418091923815](3-PageTables.assets/image-20220418091923815.png)
 
 > 三级页表的查找发生在硬件中（MMU），然而在xv6中函数`walk`也实现了页表查找功能。
 >
-> ![image-20220418094553368](chapter 3 Page tables.assets/image-20220418094553368.png)
+> ![image-20220418094553368](3-PageTables.assets/image-20220418094553368.png)
 
 - **页表提供了一层抽象（a level of indirection）**
 
   - 这里的抽象就是指虚拟地址到物理地址的映射，这里的映射关系由os控制
 
-    ![image-20220418095033442](chapter 3 Page tables.assets/image-20220418095033442.png)
+    ![image-20220418095033442](3-PageTables.assets/image-20220418095033442.png)
 
   > 因为操作系统对于这里的地址翻译有完全的控制，它可以实现各种各样的功能。比如，当一个PTE是无效的，硬件会返回一个page fault，对于这个page fault，操作系统可以更新 page table并再次尝试指令。所以，通过操纵page table，在运行时有各种各样可以做的事情。
 
@@ -110,7 +110,7 @@
 
 ## Kernel Page Table
 
-![image-20220418100335950](chapter 3 Page tables.assets/image-20220418100335950.png)
+![image-20220418100335950](3-PageTables.assets/image-20220418100335950.png)
 
 ### 物理地址空间
 
@@ -163,13 +163,13 @@
 
 Q&A:
 
-![image-20220418113357418](chapter 3 Page tables.assets/image-20220418113357418.png)
+![image-20220418113357418](3-PageTables.assets/image-20220418113357418.png)
 
-![img](chapter 3 Page tables.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MKb_jHb6u2XMiYkH2i0%2F-MKeJFYcE1NyVZ0QMc67%2Fimage.png)
+![img](3-PageTables.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MKb_jHb6u2XMiYkH2i0%2F-MKeJFYcE1NyVZ0QMc67%2Fimage.png)
 
-![image-20220418113643253](chapter 3 Page tables.assets/image-20220418113643253.png)
+![image-20220418113643253](3-PageTables.assets/image-20220418113643253.png)
 
-![image-20220418114119628](chapter 3 Page tables.assets/image-20220418114119628.png)
+![image-20220418114119628](3-PageTables.assets/image-20220418114119628.png)
 
 > 用户进程的虚拟地址空间是由内核设置好的，专属于进程的page table来完成地址翻译
 

@@ -10,7 +10,7 @@
 
 - **system call** - a process invokes a kernel service
 
-![image-20220411083735276](chapter 1 Operating system interfaces.assets/image-20220411083735276.png)
+![image-20220411083735276](1-OperatingSystemInterfaces.assets/image-20220411083735276.png)
 
 - time-shares processes
 

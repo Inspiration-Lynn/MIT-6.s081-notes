@@ -18,23 +18,23 @@ how the user call makes its way to the exec system call’s implementation in th
 
    - system call number is placed in register`a7`
 
-     ![image-20220413152915313](chapter 4 Traps and system calls.assets/image-20220413152915313.png)
+     ![image-20220413152915313](4-TrapsAndSystemCalls.assets/image-20220413152915313.png)
 
    - `ecall` instruction
 
 2. `syscall` (kernel/syscall.c:133) retrieves the system call number from the saved a7 in the trapframe and uses it to index into syscalls.
 
-   ![image-20220413153632840](chapter 4 Traps and system calls.assets/image-20220413153632840.png)
+   ![image-20220413153632840](4-TrapsAndSystemCalls.assets/image-20220413153632840.png)
 
    - `syscalls[7]()`->`sys_exec` (kernel/sysfile.c) 进入`exec`函数实现：
 
-     ![image-20220414163557015](chapter 4 Traps and system calls.assets/image-20220414163557015.png)
+     ![image-20220414163557015](4-TrapsAndSystemCalls.assets/image-20220414163557015.png)
 
    - `syscall` records its return value in p->trapframe->a0
 
    - #`syscalls array` - a table of function pointers
    
-     ![image-20220413153512515](chapter 4 Traps and system calls.assets/image-20220413153512515.png)
+     ![image-20220413153512515](4-TrapsAndSystemCalls.assets/image-20220413153512515.png)
 
 
 
