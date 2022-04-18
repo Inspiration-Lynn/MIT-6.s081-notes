@@ -33,7 +33,7 @@
 - 每个程序都运行在自己的地址空间，并且这些地址空间相互独立
   - 强隔离性
 
-![img](3-PageTables.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MKKjB2an4WcuUmOlE__%2F-MKO-tmkrzI0URCtzr3X%2Fimage.png)
+![img](3-PageTables.assets/address-space.png)
 
 
 
@@ -165,7 +165,7 @@ Q&A:
 
 ![image-20220418113357418](3-PageTables.assets/image-20220418113357418.png)
 
-![img](3-PageTables.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MKb_jHb6u2XMiYkH2i0%2F-MKeJFYcE1NyVZ0QMc67%2Fimage.png)
+![img](3-PageTables.assets/free-memory.png)
 
 ![image-20220418113643253](3-PageTables.assets/image-20220418113643253.png)
 

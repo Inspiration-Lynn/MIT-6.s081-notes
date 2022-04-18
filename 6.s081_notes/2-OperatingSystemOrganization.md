@@ -171,7 +171,7 @@ The inter-module interfaces are defined in defs.h (kernel/defs.h)
 
 
 
-![img](2-OperatingSystemOrganization.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MJdmgC_aByY8_wjKNKA%2F-MJgXiV2KBGQeuPgX4Bj%2Fimage.png)
+![img](2-OperatingSystemOrganization.assets/compile-kernel.png)
 
 3. 调用qemu运行Kernel
    - -kernel：这里传递的是内核文件（kernel目录下的kernel文件），这是将在QEMU中运行的程序文件。
@@ -197,7 +197,7 @@ QEMU仿真RISC-V处理器，背后的含义？
 
 为了完成这里的工作，QEMU的主循环需要维护寄存器的状态。所以QEMU会有以C语言声明的类似于X0，X1寄存器等等。
 
-![img](2-OperatingSystemOrganization.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MJgoATd2oLIEq69pgjA%2F-MJivpmcbCh1TaxGomhZ%2Fimage.png)
+![img](2-OperatingSystemOrganization.assets/qemu.png)
 
 ## # **[XV6 启动过程-gdb内核调试](https://mit-public-courses-cn-translatio.gitbook.io/mit6-s081/lec03-os-organization-and-system-calls/3.9-xv6-qi-dong-guo-cheng)**
 
