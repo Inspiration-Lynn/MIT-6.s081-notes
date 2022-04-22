@@ -14,27 +14,21 @@ how the user call makes its way to the exec system call’s implementation in th
            ecall
    ```
 
-   - `exec`'s arguments are placed in register`a0` `a1`
+   - 系统调用的参数首先存在寄存器中（像其他函数调用参数一样）
 
-   - system call number is placed in register`a7`
+   - 系统调用号被存入寄存器`a7`中（syscall.h中定义系统调用号）
 
-     ![image-20220413152915313](4-TrapsAndSystemCalls.assets/image-20220413152915313.png)
+   - `ecall`指令调用
 
-   - `ecall` instruction
+2. 函数`syscall` (kernel/syscall.c:133) 在`a7`中取回系统调用号，索引相应的系统调用函数并调用；返回值存在trapframe->a0中。
 
-2. `syscall` (kernel/syscall.c:133) retrieves the system call number from the saved a7 in the trapframe and uses it to index into syscalls.
+   - syscalls[]为函数指针数组
 
    ![image-20220413153632840](4-TrapsAndSystemCalls.assets/image-20220413153632840.png)
 
-   - `syscalls[7]()`->`sys_exec` (kernel/sysfile.c) 进入`exec`函数实现：
+   - `syscalls[7]()`->`sys_exec` (kernel/sysfile.c) ，获取系统调用参数，进入`exec`函数实现。
 
-     ![image-20220414163557015](4-TrapsAndSystemCalls.assets/image-20220414163557015.png)
-
-   - `syscall` records its return value in p->trapframe->a0
-
-   - #`syscalls array` - a table of function pointers
-   
-     ![image-20220413153512515](4-TrapsAndSystemCalls.assets/image-20220413153512515.png)
+   ![image-20220414163557015](4-TrapsAndSystemCalls.assets/image-20220414163557015.png)
 
 
 

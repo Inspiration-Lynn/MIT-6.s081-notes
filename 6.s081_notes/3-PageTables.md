@@ -3,27 +3,15 @@
 **LEC 4 (ab):** [Page tables](https://pdos.csail.mit.edu/6.828/2021/slides/6s081-lec-vm.pdf) (2020: [notes](https://pdos.csail.mit.edu/6.828/2021/lec/l-vm.txt), [boards](https://pdos.csail.mit.edu/6.828/2021/lec/l-vm-boards.pdf), [video](https://youtu.be/f1Hpjty3TT8))
 **Preparation**: Read [Chapter 3](https://pdos.csail.mit.edu/6.828/2021/xv6/book-riscv-rev2.pdf) and [kernel/memlayout.h](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/memlayout.h), [kernel/vm.c](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/vm.c), [kernel/kalloc.c](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/kalloc.c), [kernel/riscv.h](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/riscv.h), and [kernel/exec.c](https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/exec.c)
 
-**LEC 5 (TAs):** [GDB, calling conventions and stack frames RISC-V](https://pdos.csail.mit.edu/6.828/2021/lec/gdb_slides.pdf) (2020: [notes](https://pdos.csail.mit.edu/6.828/2021/lec/l-riscv.txt), [boards](https://pdos.csail.mit.edu/6.828/2021/lec/l-riscv-slides.pdf), [video](https://youtu.be/s-Z5t_yTyTM))
-**Preparation**: Read [Calling Convention](https://pdos.csail.mit.edu/6.828/2021/readings/riscv-calling.pdf)
-**Assignment**: [Lab pgtbl: Page tables](https://pdos.csail.mit.edu/6.828/2021/labs/pgtbl.html)
-
-
-
 ## Virtual memory
 
 > 详见csapp
 
-- 内存的隔离性
+1. 虚拟内存作为缓存的工具
 
-- 为每个进程提供了一个大的、一致的和私有的地址空间
+2. 虚拟内存作为内存管理的工具
 
-### 1- 虚拟内存作为缓存的工具
-
-### 2- 虚拟内存作为内存管理的工具
-
-### 3- 虚拟内存作为内存保护的工具
-
-
+3. 虚拟内存作为内存保护的工具
 
 
 
@@ -32,6 +20,9 @@
 - 地址空间是一个非负整数地址的有序集合
 - 每个程序都运行在自己的地址空间，并且这些地址空间相互独立
   - 强隔离性
+- kernel address space & process address space
+  - 一样大（0 - MAXVA） 
+
 
 ![img](3-PageTables.assets/address-space.png)
 
@@ -169,43 +160,141 @@ Q&A:
 
 ![image-20220418113643253](3-PageTables.assets/image-20220418113643253.png)
 
-![image-20220418114119628](3-PageTables.assets/image-20220418114119628.png)
-
 > 用户进程的虚拟地址空间是由内核设置好的，专属于进程的page table来完成地址翻译
 
 ### Code: creating a kernel address space
 
-#### [`kvminit`](https://github.com/mit-pdos/xv6-riscv/blob/riscv//kernel/vm.c#L22) - 创建内核页表
+- 数据结构：
 
-1. 为最高级page directory分配物理页
+  ```c
+  typedef uint64 pte_t;
+  typedef uint64 *pagetable_t; // 512 PTEs, pointer to page-table page
+  ```
 
-   ```c
-   kpgtbl = (pagetable_t) kalloc();
-   memset(kpgtbl, 0, PGSIZE);
-   ```
+- 关键函数：
 
-2.  通过函数`kvmmap`（install translations），将每个I/O设备映射到内核地址空间
+  - `walk` - finds the PTE for a virtual address（返回某个PTE的指针）
 
-   - The file (kernel/memlayout.h) declares the constants for xv6’s kernel memory layout.
-   - 将物理地址映射到相同的内核虚拟地址（直接映射）
+    > 软件模拟硬件MMU地址翻译过程
+    >
+    > 既然地址翻译是MMU硬件完成的，那这个函数存在的意义是什么？见#2 多级页表 Q&A
 
-   ```c
-   // uart registers
-   kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_R | PTE_W);
-   // virtio mmio disk interface
-   kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
-   // PLIC
-   kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
-   // map kernel text executable and read-only.
-   kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
-   // map kernel data and the physical RAM we'll make use of.
-   kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
-   // map the trampoline for trap entry/exit to
-   // the highest virtual address in the kernel.
-   kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
-   ```
+  - `mappages` - install mappings into a page table for a range of virtual addresses to a corresponding range of physical addresses
 
-   
+  - `copyout` `copyin` - copy data to and from user virtual addresses provided as system call arguments
+
+    - 区分内核地址空间 & 用户地址空间
+
+boot阶段，`main`调用`kvminit`、`kvminithart`:
+
+- [`kvminit`](https://github.com/mit-pdos/xv6-riscv/blob/riscv//kernel/vm.c#L22) - 创建内核页表
+
+  1. 为最高级page directory分配物理页
+
+  ```c
+  kpgtbl = (pagetable_t) kalloc();
+  memset(kpgtbl, 0, PGSIZE);
+  ```
+
+  2. 通过函数`kvmmap`（install translations），将每个I/O设备直接映射到内核地址空间，另外还有kernel’s instructions and data, physical memory up to PHYSTOP
+
+     - The file (kernel/memlayout.h) declares the constants for xv6’s kernel memory layout.
+
+     - 将物理地址映射到相同的内核虚拟地址（直接映射）
+
+
+  ```c
+  // uart registers
+  kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_R | PTE_W);
+  // virtio mmio disk interface
+  kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
+  // PLIC
+  kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
+  // map kernel text executable and read-only.
+  kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
+  // map kernel data and the physical RAM we'll make use of.
+  kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
+  // map the trampoline for trap entry/exit to
+  // the highest virtual address in the kernel.
+  kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
+  ```
+
+
+- `kvminithart` - 设置satp为内核页表，地址翻译开始生效
+
+![image-20220418162745683](3-PageTables.assets/image-20220418162745683.png)
+
+- 设置SATP寄存器为内核页表起始地址
+  - **地址翻译开始生效** - 在这条指令之前不存在可用的页表，也就不存在地址翻译，使用的是物理内存；执行完这条指令后，PC加4。而之后的指令被执行时，使用的是VA，PC会被内存中的页表翻译成PA。
+
+![image-20220418171719598](3-PageTables.assets/image-20220418171719598.png)
+
+Q&A：
+
+![image-20220418172518552](3-PageTables.assets/image-20220418172518552.png)
+
+- `procinit` - allocates a kernel stack for each process
+
+## Process address space
+
+- 范围大小：0 - MAXVA
+
+  ```c
+  #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+  ```
+
+- 含有初始栈的一个进程的用户地址空间
+
+![image-20220418221110919](3-PageTables.assets/image-20220418221110919.png)
+
+- Code: **sbrk**
+  - Sbrk is the system call for a process to shrink or grow its memory
+  - 实现：`growproc`
+    - growproc calls uvmalloc or uvmdealloc, depending on whether n is postive or negative
+    - uvmalloc - allocate physical memory with `kalloc`, and add PTEs with `mappages`
+    - uvmdealloc - `walk` to find PTE, and `kfree` to free physical memory
+
+### create the user part of an address space
+
+Code: **exec**
+
+- It initializes the user part of an address space from a file stored in the file system
+- ELF文件结构
+
+1. 使用`namei`根据路径打开二进制文件
+2. 检查ELF头
+3. 调用`proc_pagetable`分配一个新页表
+4. 使用`uvmalloc`为每个ELF段分配内存，将ELF段写入物理内存，并加载进页表
+
+
+
+## Physical memory allocation
+
+- The kernel must allocate and free physical memory at run-time for page tables, user memory, kernel stacks, and pipe buffers
+
+- xv6 uses the physical memory **between the end of the kernel and PHYSTOP** for run-time allocation.
+- 分配/释放以页为单位
+
+- xv6 keeps track of which pages are free by threading a **linked list** through the pages themselves. 
+  - Allocation consists of removing a page from the linked list; 
+  - freeing consists of adding the freed page to the list.
+
+### Code: Physical memory allocator
+
+The allocator resides in `kernel/kalloc.c`
+
+- 数据结构：
+  - free list of physical memory pages that are available for allocation.
+  - Each free page’s list element is a **struct run**.
+    - It stores each free page’s run structure in the free page itself, since there’s nothing else stored there.
+
+- 关键函数：
+  - `main`: `kinit` - initialize the allocator；kinit initializes the free list to hold every page between the end of the kernel and PHYSTOP.
+    - `freerange` - add memory to the free list via per-page calls to kfree
+    - `kfree` - setting every byte in the memory being freed to the value 1 & prepends the the page to the free list. 
+      - first step will cause code that uses memory after freeing it (uses “dangling references”) to read garbage instead of the old valid contents
+
+
 
 
 
