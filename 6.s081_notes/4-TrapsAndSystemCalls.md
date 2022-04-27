@@ -329,7 +329,7 @@ tui enable
 
 #### usertrapret函数（trap.c）
 
-返回到用户空间之前内核要做的工作
+设置控制寄存器为将来的来自用户空间的trap做准备，以及一些返回到用户空间之前内核要做的工作。
 
 1. 设置stvec寄存器为user-trap-handler，设置之前要关中断（此时在内核态）
 
