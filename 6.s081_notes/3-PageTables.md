@@ -136,7 +136,7 @@
 
 1. 有一些page在虚拟内存中的地址很靠后，如kernel stack
 
-   - kernel下面有未被映射的Guard page（PTE_V未设置，且不会映射到任何物理内存）；若kernel stack溢出到Guard page会触发page fault
+   - kernel stack下面有未被映射的Guard page（PTE_V未设置，且不会映射到任何物理内存）；若kernel stack溢出到Guard page会触发page fault
 
    - 这样Kernel stack被映射了两次，实际是用的上面的那部分，因为更安全
    - 可以利用页表做的有趣的事情：**向同一个物理地址映射两个虚拟地址**
