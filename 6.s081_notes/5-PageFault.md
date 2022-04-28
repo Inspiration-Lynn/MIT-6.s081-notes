@@ -2,6 +2,8 @@
 
 ## 1- Page Fault Basics
 
+page fault：是一种trap（类似系统调用）
+
 通过page fault可以实现的一系列虚拟内存功能：
 
 - lazy allocation
@@ -9,13 +11,17 @@
 - demand paging
 - memory mapped file
 
-几乎所有稍微正经的操作系统都实现了这些功能。比如Linux就实现了所有的这些功能。然而在XV6中，一个这样的功能都没实现。在XV6中，一旦用户空间进程触发了page fault，会导致进程被杀掉。这是非常保守的处理方式。
+
 
 虚拟内存两大优点：
 
 - Isolation（隔离性）
   - 不同应用程序地址空间的隔离；用户空间和内核空间的隔离
+  
 - level of indirection（抽象）
+
+  已经学过的一些栗子：
+
   - trampoline page (同一个物理地址映射多个虚拟地址)；guard page (实际没有映射到任何物理内存)
   - 处理器和所有的指令都可以使用虚拟地址，而内核会定义从虚拟地址到物理地址的映射关系。这一层抽象是我们这节课要讨论的许多有趣功能的基础。
 
@@ -25,18 +31,29 @@
 
 **通过page fault，内核可以更新页表，使地址映射关系变得动态**
 
+核心思想：当发生page fault时再更换页表。xv6当发生page fault时会panic杀掉进程，但实际上有些情况不需要panic（常保守的处理方式）。
+
+**Combination of page faults and updating page table is powerful!**
+
+
+
 发生page fault时，内核需要什么样的信息才能够响应page fault：
 
 - **引起page fault的虚拟地址（触发page fault的源）**
-  - 当出现page fault的时候，XV6内核会打印出错的虚拟地址，并且这个地址会被保存在STVAL寄存器中。
+  - 当出现page fault的时候，XV6内核会打印出错的虚拟地址，并且这个地址会被保存在**STVAL寄存器**中。
 - **引起page fault的原因类型**
-  - 对不同场景的page fault有不同的响应；SCAUSE保存了trap的原因
+  - 对不同场景的page fault有不同的响应；**SCAUSE**保存了trap的原因
+  - 3种page fault：	
+    - load page faults (when a load instruction cannot translate its virtual address)
+    - store page faults (when a store instruction cannot translate its virtual address) 
+    - instruction page faults (when the address for an instruction doesn’t translate)
 
 ![image-20220427165800460](5-PageFault.assets/image-20220427165800460.png)
 
-- **触发page fault的指令的地址**
+- **触发page fault的指令和mode**
   - SEPC寄存器，同时保存在trapframe->epc
-  - 关心触发page fault时的pc是因为，在page fault handler中我们或许想要修复page table，并重新执行对应的指令。
+    - 关心触发page fault时的pc是因为，在page fault handler中我们或许想要修复page table，并重新执行对应的指令。
+  - U/K mode：implicit in usertrap/kerneltrap
 
 ## 2- Lazy page allocation
 
