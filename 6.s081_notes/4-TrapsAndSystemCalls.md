@@ -13,14 +13,13 @@ trap涉及了许多小心的设计和重要的细节，对于实现**安全隔�
 在用户态 -> 内核态的转换过程中，**硬件的状态**非常重要（将硬件从适合运行用户应用程序的状态，改变到适合运行内核代码的状态）
 
 - 32个用户寄存器
+- 控制寄存器：
   - pc程序计数器（Program Counter Register）
-  - privilege mode - supervisor mode or user mode
-  - 一些控制CPU工作方式的寄存器：如SATP
-  - STVEC（Supervisor Trap Vector Base Address Register）寄存器 - 指向了内核中处理trap的指令的起始地址
-  - SEPC（Supervisor Exception Program Counter）寄存器 - 在trap的过程中保存程序计数器的值
-  - SSRATCH（Supervisor Scratch Register）寄存器
-
-这些寄存器表明了执行系统调用时计算机的状态。
+  - privilege mode：supervisor mode or user mode
+  - SATP（Supervisor Address Translation and Protection）：指向页表的物理地址
+  - STVEC（Supervisor Trap Vector Base Address Register）：指向了内核中处理trap的指令的起始地址
+  - SEPC（Supervisor Exception Program Counter）： 在trap的过程中保存程序计数器的值
+  - SSCRATCH（Supervisor Scratch Register）：指向trapframe
 
 
 
@@ -29,9 +28,10 @@ trap涉及了许多小心的设计和重要的细节，对于实现**安全隔�
 在trap的最开始，CPU的所有状态都设置成运行用户代码而不是内核代码。在trap处理的过程中，需要更改一些状态，或者对状态做一些操作。这样才可以运行系统内核中普通的C程序。
 
 1. **保存32个用户寄存器 & pc**
+   
    - 之后需要恢复用户应用程序的执行，尤其是当用户程序随机的被设备中断所打断时。我们希望内核能够响应中断，之后在用户程序完全**无感知**的情况下再恢复用户代码的执行。所以这意味着32个用户寄存器不能被内核弄乱。但是这些寄存器又要被内核代码所使用，所以在trap之前，你必须先在某处保存这32个用户寄存器。
    - 程序计数器也需要在某个地方保存，它几乎跟一个用户寄存器的地位是一样的，我们需要能够在用户程序运行中断的位置继续执行用户程序。
-
+   
 2. **转换为supervisor mode**
 
    - 需要使用内核中的各种各样的特权指令
@@ -76,7 +76,7 @@ high-level goals:
 
 #### **ECALL指令之前的状态**
 
-1. 作为用户代码的Shell调用write时，实际上调用的是关联到Shell的一个库函数**write** - 被调用的write函数实现（usys.s）
+1. 作为用户代码的Shell调用write时，实际上调用的是关联到Shell的一个库函数write，其首先将系统调用号SYS_write存到a7寄存器中，之后执行ecall指令，从用户态转换到内核态。
 
 ![image-20220425095134944](4-TrapsAndSystemCalls.assets/image-20220425095134944.png)
 
@@ -106,11 +106,15 @@ high-level goals:
 
 ![image-20220425105208735](4-TrapsAndSystemCalls.assets/image-20220425105208735.png)
 
+> 程序计数器（pc）和堆栈指针（sp）的地址现在都在距离0比较近的地址，这进一步印证了当前代码运行在用户空间，因为用户空间中所有的地址都比较小。但是一旦我们进入到了内核，内核会使用大得多的内存地址。
+
 系统调用的时间点会有大量状态的变更，其中一个最重要的需要变更的状态，并且在它变更之前我们对它还有依赖的，就是是当前的page table，查看SATP寄存器，这里输出的是物理内存地址。
 
 ![image-20220425110009217](4-TrapsAndSystemCalls.assets/image-20220425110009217.png)
 
-在QEMU中有一个方法可以打印当前的page table。从QEMU界面，输入*ctrl a + c*可以进入到QEMU的console，之后输入*info mem*，QEMU会打印完整的page table。
+**打印shell用户进程的页表：**
+
+QEMU方法：从QEMU界面，输入*ctrl a + c*可以进入到QEMU的console，之后输入*info mem*，QEMU会打印完整的page table。
 
 这是用户程序shell的page table，这6条映射关系是有关Shell的指令和数据，以及一个无效的page用来作为guard page（PTE_U未设置），以防止Shell尝试使用过多的stack page。
 
@@ -163,9 +167,12 @@ ecall指令重要特点 - 并不会切换page table。这意味着，trap处理�
 
 #### uservec函数（trampoline.S）
 
+- **SSCRATCH寄存器保存了trapframe的va**
+- **映射到每个进程地址空间的trapframe page**
+
 1. **保存32个用户寄存器**
 
-SSCRATCH寄存器保存了trapframe-usertrap (user-trap-handler)的地址
+SSCRATCH寄存器保存了trapframe的地址
 
 交换a0、sscratch，此时a0中保存了trapframe-0x3fffffe000，sscratch保存了系统调用第一个参数
 
@@ -201,13 +208,13 @@ sd命令依次保存32个用户寄存器
         ......
 ```
 
-2. **内核将预先存入trapframe的前5个值加载到对应寄存器**
+2. **内核将预先存入trapframe的值加载到对应寄存器**
 
 ![image-20220425173759432](4-TrapsAndSystemCalls.assets/image-20220425173759432.png)
 
 ![image-20220426104937834](4-TrapsAndSystemCalls.assets/image-20220426104937834.png)
 
-设置sp寄存器
+设置sp寄存器为kernel stack pointer
 
 ![image-20220425173616307](4-TrapsAndSystemCalls.assets/image-20220425173616307.png)
 
@@ -460,10 +467,36 @@ how the user call makes its way to the exec system call’s implementation in th
 
 ## 4.4 Code: System call arguments
 
-user code calls system call wrapper functions, the arguments are initially in registers, and trap code saves them to the current process's trap frame.
+user code calls **system call wrapper functions**, the arguments are initially in registers, and trap code saves them to the current process's trap frame.
 
 The functions `argint`, `argaddr`, and `argfd` retrieve the n ’th system call argument from the trap frame as an integer, pointer, or a file descriptor. They all call `argraw` to retrieve the appropriate saved user register (kernel/syscall.c:35).
 
-- pass pointers as arguments 2 challenges
+**pass pointers as arguments 2 challenges：**
 
-......未完待续
+- the user program may be buggy or malicious, and may pass the kernel an invalid pointer or a pointer intended to trick the kernel into accessing kernel memory instead of user memory  
+- the xv6 kernel page table mappings are not the same as the user page table mappings, so the kernel cannot use
+  ordinary instructions to load or store from user-supplied addresses  
+
+问题2解决：fetchstr()：safely transfer data to and from user-supplied addresses  (关键：walkaddr())
+
+## 4.5 Traps from kernel space  
+
+当内核运行在CPU上时，设置stvec寄存器指向kernelvec（kernel/kernelvec.S:10）  
+
+此时satp就是内核页表，sp也指向内核栈。
+
+**kernelvec**做的事情包括：
+
+将32个用户寄存器存储在内核栈中，跳转到kerneltrap（trap.c）
+
+**kerneltrap**可以处理设备中断和异常2种中断：
+
+- devintr()来检查并处理设备中断
+- 异常：发生在内核的异常通常是一个fatal error ，内核调用panic并停止运行
+
+若kerneltrap由于时钟中断被调用：
+
+![image-20220901211546264](C:\Users\11354\AppData\Roaming\Typora\typora-user-images\image-20220901211546264.png)
+
+kerneltrap返回，继续执行**kernelvec**：从内核栈中恢复32个用户寄存器并执行sret，返回被中断的内核代码。
+

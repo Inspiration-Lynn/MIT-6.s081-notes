@@ -8,7 +8,7 @@
 
 ### # xv6 
 
-- Xv6 runs on a multi-core1 RISC-V microprocessor, and much of its low-level functionality (for example, its process implementation) is specific to RISC-V.
+- Xv6 runs on a multi-core RISC-V microprocessor, and much of its low-level functionality (for example, its process implementation) is specific to RISC-V.
   - RISC-V is a 64-bit CPU, and xv6 is written in “LP64” C.
 
 ## 2.1 Abstracting physical resources
@@ -31,15 +31,16 @@ Strong isolation requires a **hard boundary between applications and the operati
 - CPUs provide hardware support for strong isolation
   - RISC-V has three modes in which the CPU can execute instructions:
     - machine mode
-    - supervisor mode
+    - supervisor mode (Is allowed to execute **priviledged instructions**)
     - user mode
+  - An application can execute only user-mode instructions and is said to be running in **user space**, while the software in supervisor mode can also execute priviledged instructions and is said to be running in **kernel space**.
   - CPUs provide a special instruction that switches the CPU from user mode to supervisor mode and enters the kernel at an entry point specified by the kernel. (RISC-V provides the **ecall** instruction for this purpose.)
 
 ## 2.3 Kernel organization
 
-- what part of the operating system should run in supervisor mode?
+- **what part of the operating system should run in supervisor mode?**
 
-  
+> The software running in kernel space (or in supervisor mode) is called the kernel.
 
 1. **monolithic kernel（宏内核）** - the entire operating system resides in the kernel
    - 优点：
