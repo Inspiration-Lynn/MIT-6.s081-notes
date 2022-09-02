@@ -31,6 +31,8 @@
 ## Page Table
 
 - 如何在一个物理内存上创建不同的地址空间？页表
+  - 页表->描述地址空间	
+
 
 使用虚拟内存寻址的系统：
 
@@ -163,7 +165,7 @@ Q&A:
 
 > 用户进程的虚拟地址空间是由内核设置好的，专属于进程的page table来完成地址翻译
 
-### Code: creating a kernel address space
+### Code: creating an address space
 
 - 数据结构：
 
@@ -180,48 +182,54 @@ Q&A:
     >
     > 既然地址翻译是MMU硬件完成的，那这个函数存在的意义是什么？见#2 多级页表 Q&A
 
-  - `mappages` - install mappings into a page table for a range of virtual addresses to a corresponding range of physical addresses
+  - `mappages` - install mappings into a page table for a range of virtual addresses to a corresponding range of physical addresses（在通过va找到的PTE中填入到pa的映射）
 
   - `copyout` `copyin` - copy data to and from user virtual addresses provided as system call arguments
 
     - 区分内核地址空间 & 用户地址空间
 
-boot阶段，`main`调用`kvminit`、`kvminithart`:
+**boot阶段**
 
-- [`kvminit`](https://github.com/mit-pdos/xv6-riscv/blob/riscv//kernel/vm.c#L22) - 创建内核页表
+![image-20220902101751748](C:\Users\11354\AppData\Roaming\Typora\typora-user-images\image-20220902101751748.png)
+
+- [`kvminit`](https://github.com/mit-pdos/xv6-riscv/blob/riscv//kernel/vm.c#L22) - 使用kvmmake创建内核页表
 
   1. 为最高级page directory分配物理页
 
-  ```c
-  kpgtbl = (pagetable_t) kalloc();
-  memset(kpgtbl, 0, PGSIZE);
-  ```
+     ```c
+     kpgtbl = (pagetable_t) kalloc();
+     memset(kpgtbl, 0, PGSIZE);
+     ```
+
 
   2. 通过函数`kvmmap`（install translations），将每个I/O设备直接映射到内核地址空间，另外还有kernel’s instructions and data, physical memory up to PHYSTOP
 
      - The file (kernel/memlayout.h) declares the constants for xv6’s kernel memory layout.
+     - 映射方式：直接映射
 
-     - 将物理地址映射到相同的内核虚拟地址（直接映射）
 
+       ```c
+     // uart registers
+     kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_R | PTE_W);
+     // virtio mmio disk interface
+     kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
+     // PLIC
+     kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
+     // map kernel text executable and read-only.
+     kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
+     // map kernel data and the physical RAM we'll make use of.
+     kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
+     // map the trampoline for trap entry/exit to
+     // the highest virtual address in the kernel.
+     kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
+       ```
 
-  ```c
-  // uart registers
-  kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_R | PTE_W);
-  // virtio mmio disk interface
-  kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
-  // PLIC
-  kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
-  // map kernel text executable and read-only.
-  kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
-  // map kernel data and the physical RAM we'll make use of.
-  kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
-  // map the trampoline for trap entry/exit to
-  // the highest virtual address in the kernel.
-  kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
-  ```
+  3. 通过函数proc_mapstacks()为每个进程分配并映射内核栈
 
 
 - `kvminithart` - 设置satp为内核页表，地址翻译开始生效
+
+  由于内核使用的是直接映射，下一条指令的va就是正确的pa，因此页表生效后也能正常工作。
 
 ![image-20220418162745683](3-PageTables.assets/image-20220418162745683.png)
 
@@ -244,58 +252,56 @@ Q&A：
   #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
   ```
 
+- 当一个进程向xv6请求更多用户内存时发生的事情：
+
+  - xv6 调用kalloc()分配一个物理页，并向用户页表中插入PTE来指向新的物理页，并设置相关标志位。
+
+
+1. 不同的进程的页表将用户地址转换为不同的物理页，因此每个进程拥有了自己的内存
+2. 在每个进程来看，其内存是从0开始的一段连续地址，实际上一个进程的物理地址是不连续的
+3. 内核将trampoline代码映射到用户地址空间的最上面一页，因此这一个物理内存页在每一个进程中均可见
+
 - 含有初始栈的一个进程的用户地址空间
 
 ![image-20220418221110919](3-PageTables.assets/image-20220418221110919.png)
 
-- Code: **sbrk**
-  - Sbrk is the system call for a process to shrink or grow its memory
+- **sbrk**系统调用：用于一个进程缩小或增长其内存
   - 实现：`growproc`
     - growproc calls uvmalloc or uvmdealloc, depending on whether n is postive or negative
-    - uvmalloc - allocate physical memory with `kalloc`, and add PTEs with `mappages`
-    - uvmdealloc - `walk` to find PTE, and `kfree` to free physical memory
+    - `uvmalloc` - allocate physical memory with `kalloc`, and add PTEs with `mappages`
+    - `uvmdealloc` - `walk` to find PTE, and `kfree` to free physical memory
 
-### create the user part of an address space
+- **exec**系统调用：用于创建用户地址空间
 
-Code: **exec**
+  - It initializes the user part of an address space from a file stored in the file system
 
-- It initializes the user part of an address space from a file stored in the file system
-- ELF文件结构
+  使用namei()打开二进制文件path，检查ELF头（若有ELF_MAGIC则表明此文件格式正确）
 
-1. 使用`namei`根据路径打开二进制文件
-2. 检查ELF头
-3. 调用`proc_pagetable`分配一个新页表
-4. 使用`uvmalloc`为每个ELF段分配内存，将ELF段写入物理内存，并加载进页表
+  ![image-20220902151356109](C:\Users\11354\AppData\Roaming\Typora\typora-user-images\image-20220902151356109.png)
 
-
+(exec未完)
 
 ## Physical memory allocation
 
-- The kernel must allocate and free physical memory at run-time for page tables, user memory, kernel stacks, and pipe buffers
-
 - xv6 uses the physical memory **between the end of the kernel and PHYSTOP** for run-time allocation.
-- 分配/释放以页为单位
+- 以页（4096B）为单位分配和释放物理内存
+- 通过链表管理空闲的内存页
+  - 分配一个内存页：从此链表中移出一页
+  - 释放一个内存页：向此页表中加入一个空闲页
 
-- xv6 keeps track of which pages are free by threading a **linked list** through the pages themselves. 
-  - Allocation consists of removing a page from the linked list; 
-  - freeing consists of adding the freed page to the list.
+### Code: Physical memory allocator物理内存分配器
 
-### Code: Physical memory allocator
+> 物理内存是如何管理的？
 
 The allocator resides in `kernel/kalloc.c`
 
 - 数据结构：
   - free list of physical memory pages that are available for allocation.
   - Each free page’s list element is a **struct run**.
-    - It stores each free page’s run structure in the free page itself, since there’s nothing else stored there.
-
 - 关键函数：
-  - `main`: `kinit` - initialize the allocator；kinit initializes the free list to hold every page between the end of the kernel and PHYSTOP.
-    - `freerange` - add memory to the free list via per-page calls to kfree
+  - （boot阶段）`kinit` - initialize the allocator；**kinit initializes the free list to hold every page between the end of the kernel and PHYSTOP(128M).**
+    - `freerange` - 通过对每一页调用kfree将其加入free list
     - `kfree` - setting every byte in the memory being freed to the value 1 & prepends the the page to the free list. 
-      - first step will cause code that uses memory after freeing it (uses “dangling references”) to read garbage instead of the old valid contents
-
-
 
 
 
